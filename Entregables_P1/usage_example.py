@@ -1,13 +1,20 @@
-"""Ejemplo de cómo importar el modelo Joblib para nuevos datos."""
+"""Ejemplo de cómo utilizar el modelo Joblib para nuevos datos."""
 
+# La librería utils.py debe estar en el mismo directorio que este script
+# Esta librería es necesaria porque importa todos los módulos necesarios para correr el modelo .joblib
 from utils import *
 
-data = pd.read_csv('data/MovieReviews.csv')
+path = 'data/MovieReviews.csv' # Modificar el path de acuerdo a la ubicación del archivo .csv con los datos a predeci
+
+
+data = pd.read_csv(path)
 
 pipeline = joblib.load('best_model.joblib')
-
-y_true = data['sentimiento'].replace({'negativo': 0, 'positivo': 1})
 y_pred = pipeline.predict(data['review_es'])
 
-classif_report = classification_report(y_true, y_pred, output_dict=True)
-print(classif_report)
+data['predicted_sentimiento'] = y_pred
+data['predicted_sentimiento'] = data['predicted_sentimiento'].replace({0: 'negativo', 1: 'positivo'})
+
+# Se guarda el archivo con el nombre original + _predicted.csv
+new_filename = path.split('.')[0] + '_predicted.csv'
+data.to_csv(new_filename, index=False)
