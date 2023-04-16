@@ -7,8 +7,9 @@ import pandas as pd
 
 usage_count = 0
 pipeline = joblib.load('best_model.joblib')
+pipeline.predict(pd.Series(['']))
 
-def feel_extractor(texts, include_texts):
+def feel_extractor(texts, include_texts=False):
     global pipeline
     df = pd.DataFrame(texts, columns=['texto'])
     df['sentimiento'] = pipeline.predict(df['texto'])
