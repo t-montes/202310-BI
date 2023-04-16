@@ -1,50 +1,175 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Hello</title>
+    <title>Análisis de sentimiento</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 </head>
 <body>
-    <div class="container">
-        <!-- TODO: Set 'action' to form "{% url 'app:main_endpoint' %}" is not working (also should change endpoint to receive FORM data) -->
-        <form class="mlForm" method="POST">
-            {% csrf_token %}
-            <label for="sentence">Your sentence:</label>
-            <input type="text" name="sentence">
-            <input type="submit" value="Predict">
+    <style>
+        .title {
+            text-align: center;
+        }
+
+        .item-pad {
+            margin: 3px 0px 3px 0px; 
+        }
+
+        body {
+            margin: 12px;
+        }
+
+        #form-analisis textarea {
+            max-height: 156px;
+        }
+    </style>
+    <h1 class="title">Análisis de sentimiento</h1>
+    <h3 class="title">Reseñas de películas</h3>
+    <form id="form-analisis">
+        {% csrf_token %}
+        <!-- Columns: 1 for each 2 buttons -->
+        <div class="row">
+            <div class="col-8 d-flex justify-content-center">
+                <label for="textos">Ingrese los textos a analizar:</label>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-4 d-flex justify-content-center">
+                <input type="button" class="item-pad" value="+" style="background-color:chartreuse;" onclick="agregarTexto()">
+            </div>
+            <div class="col-4 d-flex justify-content-center">
+                <input type="submit" class="item-pad" style="background-color: aqua;" value="Analizar">
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-8">
+                <textarea name="textos[]" rows="3" cols="140" class="item-pad"></textarea>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-8 d-flex justify-content-center">
+                <p class="item-pad" style="display:none;color:#F6471C">Máximo pueden haber 5 campos de texto a la vez</p>
+            </div>
+        </div>
         </form>
+    <div class="row">
+        <div class="col-4 d-flex justify-content-center">
+            <input type="button" class="item-pad" value="Descargar CSV" onclick="descargarResultados()">
+        </div>
+        <div class="col-4 d-flex justify-content-center">
+            <input type="button" class="item-pad" value="Borrar" onclick="borrarFormulario()">
+        </div>
     </div>
+
+    <table id="tabla-resultados" style="display:none"> <!-- Para el CSV -->
+        <thead>
+            <tr>
+                <th>Texto</th>
+                <th>Sentimiento</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+
+    <script>
+        var nTexts = 1;
+
+        function agregarTexto() {
+            var textarea = document.createElement("textarea");
+            textarea.name = "textos[]";
+            textarea.rows = "3";
+            textarea.cols = "140";
+            textarea.className = "item-pad";
+            nTexts++;
+            if (nTexts > 5) {
+                document.querySelector("#form-analisis p").style.display = "block";
+                return;
+            } else {
+                document.querySelector("#form-analisis p").style.display = "none";
+                document.querySelectorAll("textarea")[nTexts-2].after(textarea);
+            }
+        }
+
+        function descargarResultados() {
+            var csv = "Texto;Sentimiento\n";
+            var rows = document.querySelectorAll("#tabla-resultados tbody tr");
+            for (var i = 0; i < rows.length; i++) {
+                var cells = rows[i].querySelectorAll("td");
+                // cambiar los saltos de línea por espacios y los ; por ,
+                csv += cells[0].textContent.replace(/(\r\n|\n|\r)/gm, " ").replace(/;/g, ",")
+                 + ";" + cells[1].textContent + "\n";
+            }
+            var blob = new Blob([csv], {type: "text/csv"});
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
+            a.href = url;
+            a.download = "resultados.csv";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function borrarFormulario() {
+            document.getElementById("form-analisis").reset();
+            var textareas = document.querySelectorAll("textarea");
+            for (var i = 1; i < textareas.length; i++) {
+                textareas[i].remove();
+            }
+            document.getElementById("tabla-resultados").style.display = "none";
+            document.querySelector("#form-analisis textarea").focus();
+            document.querySelector("#form-analisis textarea").style.backgroundColor = "white";
+            
+            document.querySelector("#form-analisis p").style.display = "none";
+            nTexts = 1;
+        }
+
+        $(document).ready(function() {
+            $("#form-analisis").submit(function(event) {
+                event.preventDefault();
+                var url = $(this).attr("action");
+                var data = $(this).serialize();
+                $.post(url, data, function(response) {
+                    var sentimientos = response.sentimiento;
+                    var textos = document.querySelectorAll("#form-analisis textarea");
+
+                    /* Modificar tabla de resultados, para el CSV */
+                    var tablaResultados = document.getElementById("tabla-resultados");
+                    // tablaResultados.style.display = "block";
+                    tablaResultados.getElementsByTagName("tbody")[0].innerHTML = "";
+                    for (var i = 0; i < textos.length; i++) {
+                        var tr = document.createElement("tr");
+                        var tdTexto = document.createElement("td");
+                        tdTexto.textContent = textos[i].value;
+                        tr.appendChild(tdTexto);
+                        var tdSentimiento = document.createElement("td");
+                        tdSentimiento.textContent = sentimientos[i];
+                        if (sentimientos[i] == "positivo") {
+                            tdSentimiento.style.backgroundColor = "green";
+                            tdSentimiento.style.color = "white";
+                        } else if (sentimientos[i] == "negativo") {
+                            tdSentimiento.style.backgroundColor = "red";
+                            tdSentimiento.style.color = "white";
+                        } else {
+                            tdSentimiento.style.backgroundColor = "yellow";
+                        }
+                        tr.appendChild(tdSentimiento);
+                        tablaResultados.getElementsByTagName("tbody")[0].appendChild(tr);
+                    }
+
+                    /* Cambiar el color de cada textarea a verde si es positivo o rojo si es negativo */
+                    for (var i = 0; i < textos.length; i++) {
+                        if (sentimientos[i] == "positivo") {
+                            textos[i].style.backgroundColor = "#B0E994";
+                        } else if (sentimientos[i] == "negativo") {
+                            textos[i].style.backgroundColor = "#E9B794";
+                        } else {
+                            textos[i].style.backgroundColor = "#E9E194";
+                        }
+                    }
+                });
+            });
+        });
+    </script>
 </body>
-<style>
-    body,html{
-        margin:0;
-        padding:0;
-        height:100vh;
-        background:rgb(16, 69, 78);
-        display:flex;
-        justify-content: center;
-        color:#fff;
-        font-family:Montserrat;
-    }
-    .container{margin-top:9vh;}
-    form label{display:block;}
-    form input[type='text']{
-        border-radius:5px;
-        border:none;
-        outline:none;
-        padding:10px 7px;
-        font-family:Montserrat;
-    }
-    form input[type='submit']{
-        padding:10px 1rem;
-        background:rgb(21, 182, 168);
-        color:#fff;
-        border:none;
-        outline:none;
-        cursor:pointer;
-        border-radius:5px;
-    }
-</style>
 </html>

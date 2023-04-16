@@ -21,10 +21,9 @@ def feel_extractor(texts, include_texts=False):
 def main_endpoint(request):
     global usage_count
     if request.method == 'POST':
-        data = json.loads(request.body)
-        texts = data['textos']
-        include_texts = data['incluir_textos'] if 'incluir_textos' in data else False
-        feelings = feel_extractor(texts, include_texts)
+        texts = request.POST.getlist('textos[]')
+        #include_texts = data['incluir_textos'] if 'incluir_textos' in data else False
+        feelings = feel_extractor(texts, False)
         response_data = {'sentimiento': feelings}
         usage_count += 1
         return JsonResponse(response_data)
