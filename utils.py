@@ -3,18 +3,15 @@
 import joblib
 import numpy as np
 import pandas as pd
-from langdetect import detect
 import unicodedata
 import re
 import inflect
 from joblib import Parallel, delayed
 import os
 
-import nltk
 from nltk.stem import SnowballStemmer
 from sklearn.base import BaseEstimator, TransformerMixin
 
-from sklearn.metrics import classification_report
 
 class TextPreprocessor(BaseEstimator, TransformerMixin):
     def __init__(self):
