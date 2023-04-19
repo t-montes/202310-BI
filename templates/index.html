@@ -19,8 +19,46 @@
             margin: 12px;
         }
 
+        .lds-facebook {
+        display: inline-block;
+        position: relative;
+        width: 60px;
+        height: 60px;
+        }
+        .lds-facebook div {
+        display: inline-block;
+        position: absolute;
+        left: 6px;
+        width: 12px;
+        background: #000;
+        animation: lds-facebook 1.2s cubic-bezier(0, 0.5, 0.5, 1) infinite;
+        }
+        .lds-facebook div:nth-child(1) {
+        left: 6px;
+        animation-delay: -0.24s;
+        }
+        .lds-facebook div:nth-child(2) {
+        left: 24px;
+        animation-delay: -0.12s;
+        }
+        .lds-facebook div:nth-child(3) {
+        left: 42px;
+        animation-delay: 0;
+        }
+        @keyframes lds-facebook {
+        0% {
+            top: 6px;
+            height: 48px;
+        }
+        50%, 100% {
+            top: 18px;
+            height: 24px;
+        }
+        }
+
         #form-analisis textarea {
-            max-height: 156px;
+            /*max-height: 156px;*/
+            height: 60px;
         }
     </style>
     <h1 class="col-8 title">Análisis de sentimiento</h1>
@@ -30,8 +68,24 @@
         {% csrf_token %}
         <!-- Columns: 1 for each 2 buttons -->
         <div class="row">
+            <div class="col-4 d-flex justify-content-center">
+                <input type="button" class="item-pad" value="Descargar CSV" onclick="descargarResultados()">
+            </div>
+            <div class="col-4 d-flex justify-content-center">
+                <input type="button" class="item-pad" value="Borrar" onclick="borrarFormulario()">
+            </div>
+            <!-- Vertical line separator and then a 4-col div -->            
+            <div class="col-4 d-flex justify-content-center">
+                <input type="button" class="item-pad" value="Importar CSV" onclick="importarCsv()">
+            </div>
+        </div>
+        <div class="row">
             <div class="col-8 d-flex justify-content-center">
                 <label for="textos">Ingrese los textos a analizar:</label>
+            </div>
+            <div class="col-4 d-flex justify-content-center">
+                <label for="separador">Separador de columnas:</label>
+                <input type="text" class="item-pad" id="separador" maxlength="1" value="," style="width: 20px;text-align: center;margin-left: 7px;height:25px;">
             </div>
         </div>
         <div class="row">
@@ -41,32 +95,25 @@
             <div class="col-4 d-flex justify-content-center">
                 <input type="submit" class="item-pad" style="background-color: aqua;" value="Analizar">
             </div>
-        </div>
-        <div class="row">
-            <div class="col-8">
-                <textarea name="textos[]" rows="3" cols="140" class="item-pad"></textarea>
+            <div class="col-4 d-flex justify-content-center">
+                <label for="separador">Columna de reseñas:</label>
+                <input type="text" class="item-pad" id="columna" value="review_es" style="width: 100px;text-align: center;margin-left: 7px;height:25px;">
             </div>
         </div>
+        <textarea name="textos[]" class="item-pad col-11" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"></textarea>
+        <div class="lds-facebook" style="display:none"><div></div><div></div><div></div></div>
         <div class="row">
             <div class="col-8 d-flex justify-content-center">
                 <p class="item-pad" style="display:none;color:#F6471C">Máximo pueden haber 5 campos de texto a la vez</p>
             </div>
         </div>
         </form>
-    <div class="row">
-        <div class="col-4 d-flex justify-content-center">
-            <input type="button" class="item-pad" value="Descargar CSV" onclick="descargarResultados()">
-        </div>
-        <div class="col-4 d-flex justify-content-center">
-            <input type="button" class="item-pad" value="Borrar" onclick="borrarFormulario()">
-        </div>
-    </div>
 
     <table id="tabla-resultados" style="display:none"> <!-- Para el CSV -->
         <thead>
             <tr>
-                <th>Texto</th>
-                <th>Sentimiento</th>
+                <th>texto</th>
+                <th>sentimiento</th>
             </tr>
         </thead>
         <tbody>
@@ -79,27 +126,36 @@
         function agregarTexto() {
             var textarea = document.createElement("textarea");
             textarea.name = "textos[]";
-            textarea.rows = "3";
-            textarea.cols = "140";
-            textarea.className = "item-pad";
+            textarea.className = "item-pad col-11";
+            textarea.setAttribute("data-gramm", "false");
+            textarea.setAttribute("data-gramm_editor", "false");
+            textarea.setAttribute("data-enable-grammarly", "false");
             nTexts++;
-            if (nTexts > 5) {
+            
+            var spinner = document.createElement("div");
+            spinner.className = "lds-facebook";
+            spinner.style.display = "none";
+            for (var i = 0; i < 3; i++) {
+                var div = document.createElement("div");
+                spinner.appendChild(div);
+            }
+            /*if (nTexts > 5) {
                 document.querySelector("#form-analisis p").style.display = "block";
                 return;
-            } else {
-                document.querySelector("#form-analisis p").style.display = "none";
-                document.querySelectorAll("textarea")[nTexts-2].after(textarea);
-            }
+            }*/
+            document.querySelector("#form-analisis p").style.display = "none";
+            document.querySelectorAll("textarea")[nTexts-2].after(textarea);
+            document.querySelectorAll("textarea")[nTexts-2].after(spinner);
         }
 
         function descargarResultados() {
-            var csv = "Texto;Sentimiento\n";
+            var csv = "texto;sentimiento\n";
             var rows = document.querySelectorAll("#tabla-resultados tbody tr");
             for (var i = 0; i < rows.length; i++) {
                 var cells = rows[i].querySelectorAll("td");
                 // cambiar los saltos de línea por espacios y los ; por ,
                 csv += cells[0].textContent.replace(/(\r\n|\n|\r)/gm, " ").replace(/;/g, ",")
-                 + ";" + cells[1].textContent + "\n";
+                 + ';' + cells[1].textContent + "\n";
             }
             var blob = new Blob([csv], {type: "text/csv"});
             var url = URL.createObjectURL(blob);
@@ -111,6 +167,79 @@
             document.body.removeChild(a);
         }
 
+        function importarCsv() {
+            var separador = document.querySelector("#separador").value;
+            var columna = document.querySelector("#columna").value;
+            var input = document.createElement("input");
+            var regex = /("(?:(?:""|[^"])*)"|[^",\s]+)(?=\s*,|\s*$)/g;
+
+            input.type = "file";
+            input.accept = ".csv";
+            input.onchange = function() {
+                borrarFormulario();
+                var file = input.files[0];
+                var reader = new FileReader();
+                reader.onload = function() {
+                    var text = reader.result;
+                    var lines = text.split("\n");
+                    // strip the line 0 (header)
+                    var columnas = lines[0].replace(/(\r\n|\n|\r)/gm, "").split(separador);
+                    var index = columnas.indexOf(columna);
+                    if (index == -1) {
+                        alert("No se encontró la columna " + columna);
+                        return;
+                    }
+                    for (var i = 1; i < lines.length; i++) {
+                        var line = lines[i]; // la línea tiene el formato 'columnaX;"reseña";columnaY'
+                        var cells = [];
+                        // Utilizar replace() con una función personalizada como callback para separar los valores
+                        line.replace(regex, function(match, p1) {
+                            // Si el valor entre comillas dobles contiene comillas dobles, reemplazarlas por comillas simples
+                            var value = p1.replace(/""/g, '"');
+                            // Eliminar las comillas dobles al principio y al final de los valores entre comillas dobles
+                            if (value.charAt(0) === '"' && value.charAt(value.length - 1) === '"') {
+                                value = value.substr(1, value.length - 2);
+                            }
+
+                            // Agregar el valor al array
+                            cells.push(value);
+                        });
+
+                        if (cells.length < 2) {
+                            continue;
+                        } else if (cells.length > 3) {
+                            console.log("La línea " + i + " tiene más de 3 columnas");
+                            console.log(cells);
+                            return;
+                        }
+                        var text = cells[index];
+                        text = text.replace(/(\r\n|\n|\r)/gm, " ");
+                        // seleccionar el iésimo textarea
+                        var textarea = document.querySelectorAll("textarea")[i-1];
+                        textarea.value = text;
+                        textarea.style.height = "auto";
+                        if (i < (lines.length - 1)) {
+                            agregarTexto();
+                        }
+                    }
+                    // remover todas las textarea que no tenga texto
+                    var textareas = document.querySelectorAll("textarea");
+                    for (var i = 0; i < textareas.length; i++) {
+                        if (textareas[i].value == "") {
+                            textareas[i].remove();
+                        }
+                    }
+                }
+                reader.readAsText(file);
+            }
+            input.click();
+
+            // The above code is creating a file input element, clicking it, and then removing it.
+            // This is a hack to make the file input element work.
+            // The file input element is not visible, so the user doesn't see it.
+            
+        }
+
         function borrarFormulario() {
             document.getElementById("form-analisis").reset();
             var textareas = document.querySelectorAll("textarea");
@@ -120,6 +249,7 @@
             document.getElementById("tabla-resultados").style.display = "none";
             document.querySelector("#form-analisis textarea").focus();
             document.querySelector("#form-analisis textarea").style.backgroundColor = "white";
+            document.querySelector("#form-analisis textarea").style.height = "60px";
             
             document.querySelector("#form-analisis p").style.display = "none";
             nTexts = 1;
@@ -130,6 +260,15 @@
                 event.preventDefault();
                 var url = $(this).attr("action");
                 var data = $(this).serialize();
+                
+
+                var textos = document.querySelectorAll("#form-analisis textarea");
+                var spinners = document.querySelectorAll("#form-analisis .lds-facebook");
+                for (var i = 0; i < textos.length; i++) {
+                    spinners[i].style.display = "inline-block";
+                    textos[i].style.backgroundColor = "white";
+                }
+
                 $.post(url, data, function(response) {
                     var sentimientos = response.sentimiento;
                     var textos = document.querySelectorAll("#form-analisis textarea");
@@ -167,6 +306,11 @@
                         } else {
                             textos[i].style.backgroundColor = "#E9E194";
                         }
+                    }
+
+                    /* Ocultar los spinners */
+                    for (var i = 0; i < spinners.length; i++) {
+                        spinners[i].style.display = "none";
                     }
                 });
             });
