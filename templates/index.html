@@ -11,6 +11,23 @@
             text-align: center;
         }
 
+        .main-text {
+            text-align: center;
+            font-size: 19px;
+        }
+
+        .brd {
+            border: 1px solid #000;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .sub-main-text {
+            text-align: center;
+            font-size: 15px;
+            font-style: italic;
+        }
+
         .item-pad {
             margin: 3px 0px 3px 0px; 
         }
@@ -63,8 +80,35 @@
     </style>
     <h1 class="col-12 title">Análisis de sentimiento</h1>
     <h3 class="col-12 title">Reseñas de películas</h3>
-    <p class="col-12 title"><!-- TODO: Descripción de la app y de cómo utilizarla --></p>
-    <br><br>
+    <p class="col-12 main-text">
+        ¡Bienvenido!<br>
+        Para utilizar la aplicación puedes hacerlo de dos modos:<br>
+    </p>
+    <div class="row">
+        <div class="col-6">
+            <p class="main-text">
+                <b>1.</b> Ingresando reseñas en las áreas de texto<br>
+                <p class="sub-main-text">
+                    <b>1)</b> Presiona el botón "+" para agregar una nueva área de texto<br>
+                    <b>2)</b> Presiona el botón "Analizar" para analizar las reseñas ingresadas<br>
+                    <b>3)</b> Presiona el botón "Borrar" para borrar las reseñas ingresadas<br>
+                </p>
+            </p>
+        </div>
+        <div class="col-6">
+            <p class="main-text">
+                <b>2.</b> Importando un archivo CSV con las reseñas a analizar:<br>
+                <p class="sub-main-text">
+                    <b>1)</b> Selecciona el separador del archivo CSV<br>
+                    <b>2)</b> Selecciona la columna del archivo CSV que contiene las reseñas<br>
+                    <b>3)</b> Presiona el botón "Importar CSV" para seleccionar el archivo CSV<br><br>
+                </p>
+            </p>
+        </div>
+    </div>
+    <p class="col-12 sub-main-text">
+        <b>NOTA</b> Si el archivo CSV tiene un peso mayor a 1MB, no se mostrarán las reseñas en las áreas de texto pero sí se descargará un CSV con los resultados<br>    <br><br>
+    </p>
     <form id="form-analisis">
         {% csrf_token %}
         <div class="row">
@@ -114,7 +158,7 @@
         </div>
         <div class="row">
             <div class="col-12 d-flex justify-content-center">
-                <p class="item-pad" id="warning" style="display:none;color:#F6471C">Se excedió el límite de 500 líneas. Se procesarán y descargarán los resultados en un archivo CSV</p>
+                <p class="item-pad" id="warning" style="display:none;color:#F6471C">Se excedió el límite de 1MB. Se procesarán y descargarán los resultados en un archivo CSV</p>
             </div>
         </div>
         <textarea name="textos[]" class="item-pad col-12" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"></textarea>
@@ -188,138 +232,88 @@
         }
 
         function importarCsv() {
-            var separador = document.querySelector("#separador").value;
-            var columna = document.querySelector("#columna").value;
+            var separator = document.querySelector("#separador").value;
+            var column = document.querySelector("#columna").value;
             var input = document.createElement("input");
-            if (separador == ",") {
-                var regex = /("(?:(?:""|[^"])*)"|[^",\s]+)(?=\s*,|\s*$)/g;
-            } else {
-                var regex = /("(?:(?:""|[^"])*)"|[^";\s]+)(?=\s*;|\s*$)/g;
-            } // TODO: Revisar que el regex funcione también cuando el texto no comienza con comillas; o cambiar eso
 
             input.type = "file";
             input.accept = ".csv";
             input.onchange = function() {
                 var file = input.files[0];
+
                 var reader = new FileReader();
                 reader.onload = function() {
-                    var text = reader.result;
-                    var lines = text.split("\n");
-
-                    var columnas = lines[0].replace(/(\r\n|\n|\r)/gm, "").split(separador);
-                    var index = columnas.indexOf(columna);
-                    if (index == -1) {
-                        alert("No se encontró la columna " + columna);
-                        return;
+                    var data = {
+                        "textos": reader.result,
+                        "separador": separator,
+                        "nombre_columna": column,
+                        "incluir_textos": true
                     }
+                    var data = JSON.stringify(data);
+                    var datasize = data.length / 1000000;
+                    console.log("sending", datasize, "MB");
 
-                    // Si hay más de 500 líneas, procesarlas y descargar el CSV, pero no mostrarlos en los textareas
-                    if (lines.length > 500) {
-                        procesarCsv(lines, regex, index);
-                        return;
+                    if (datasize > 1) {
+                        document.querySelector("#warning").style.display = "block";
                     }
+                    showSpinners();
 
-                    borrarFormulario();
+                    var url = window.location.href + "csvtext/";
+                    var xhr = new XMLHttpRequest();
+                    xhr.open("POST", url, true);
+                    xhr.setRequestHeader("Content-Type", "application/json");
 
-                    for (var i = 1; i < lines.length; i++) {
-                        var line = lines[i]; // la línea tiene el formato 'columnaX;"reseña";columnaY'
-                        var cells = [];
-                        // Utilizar replace() con una función personalizada como callback para separar los valores
-                        line.replace(regex, function(match, p1) {
-                            // Si el valor entre comillas dobles contiene comillas dobles, reemplazarlas por comillas simples
-                            var value = p1.replace(/""/g, '"');
-                            // Eliminar las comillas dobles al principio y al final de los valores entre comillas dobles
-                            if (value.charAt(0) === '"' && value.charAt(value.length - 1) === '"') {
-                                value = value.substr(1, value.length - 2);
+                    xhr.onreadystatechange = function() {
+                        if (xhr.readyState == 4 && xhr.status == 200) {
+                            var data = JSON.parse(xhr.responseText);
+                            if (data.error) {
+                                alert(data.error);
+                            } else {
+                                var info = data.sentimiento;
+                                if (datasize > 1) {
+                                    descargarCsv(info);
+                                    document.querySelector("#warning").style.display = "none";
+                                } else {
+                                    borrarFormulario();
+                                    for (var i = 0; i < info.length; i++) {
+                                        var textareas = document.querySelectorAll("textarea");
+                                        var textarea = textareas[i];
+                                        textarea.value = info[i].texto;
+                                        textarea.style.backgroundColor = info[i].sentimiento == "positivo" ? "#B0E994" : "#E9B794";
+                                        if (i < info.length - 1) {
+                                            agregarTexto();
+                                        }
+                                    }
+                                    var textareas = document.querySelectorAll("textarea");
+                                    for (var i = 0; i < textareas.length; i++) {
+                                        if (textareas[i].value == "") {
+                                            textareas[i].remove();
+                                        }
+                                    }
+                                }
+                                /* Modificar la tabla de resultados, para guardar el CSV */
+                                var tbody = document.querySelector("#tabla-resultados tbody");
+                                tbody.innerHTML = "";
+                                for (var i = 0; i < info.length; i++) {
+                                    var tr = document.createElement("tr");
+                                    var td1 = document.createElement("td");
+                                    var td2 = document.createElement("td");
+                                    td1.textContent = info[i].texto;
+                                    td2.textContent = info[i].sentimiento;
+                                    tr.appendChild(td1);
+                                    tr.appendChild(td2);
+                                    tbody.appendChild(tr);
+                                }
                             }
-
-                            // Agregar el valor al array
-                            cells.push(value);
-                        });
-
-                        if (cells.length < 2) {
-                            continue;
-                        } else if (cells.length > 3) {
-                            console.log("La línea " + i + " tiene más de 3 columnas");
-                            console.log(cells);
-                            return;
                         }
-                        var text = cells[index];
-                        text = text.replace(/(\r\n|\n|\r)/gm, " ");
-                        // seleccionar el iésimo textarea
-                        var textarea = document.querySelectorAll("textarea")[i-1];
-                        textarea.value = text;
-                        textarea.style.height = "auto";
-                        if (i < (lines.length - 1)) {
-                            agregarTexto();
-                        }
+                        hideSpinners();
                     }
-                    // remover todas las textarea que no tenga texto
-                    var textareas = document.querySelectorAll("textarea");
-                    for (var i = 0; i < textareas.length; i++) {
-                        if (textareas[i].value == "") {
-                            textareas[i].remove();
-                        }
-                    }
+                    xhr.send(data);
                 }
                 reader.readAsText(file);
             }
             input.click();
 
-            // The above code is creating a file input element, clicking it, and then removing it.
-            // This is a hack to make the file input element work.
-            // The file input element is not visible, so the user doesn't see it.
-        }
-
-        function procesarCsv(lines, regex, index) {
-            showSpinners();
-            document.querySelector("#warning").style.display = "block";
-            var data = {
-                "textos": [],
-                "incluir_textos": true,
-            };
-            for (var i = 1; i < lines.length; i++) {
-                var line = lines[i]; // la línea tiene el formato 'columnaX;"reseña";columnaY'
-                var cells = [];
-                // Utilizar replace() con una función personalizada como callback para separar los valores
-                line.replace(regex, function(match, p1) {
-                    // Si el valor entre comillas dobles contiene comillas dobles, reemplazarlas por comillas simples
-                    var value = p1.replace(/""/g, '"');
-                    // Eliminar las comillas dobles al principio y al final de los valores entre comillas dobles
-                    if (value.charAt(0) === '"' && value.charAt(value.length - 1) === '"') {
-                        value = value.substr(1, value.length - 2);
-                    }
-
-                    // Agregar el valor al array
-                    cells.push(value);
-                });
-
-                if (cells.length < 2) {
-                    continue;
-                } else if (cells.length > 3) {
-                    console.log("La línea " + i + " tiene más de 3 columnas");
-                    console.log(cells);
-                    return;
-                }
-                var text = cells[index];
-                text = text.replace(/(\r\n|\n|\r)/gm, " ");
-                data.textos.push(text);
-            }
-            var data = JSON.stringify(data);
-            var url = window.location.href + 'json/';
-            var xhr = new XMLHttpRequest();
-            xhr.open("POST", url, true);
-            xhr.setRequestHeader("Content-Type", "application/json");
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState == 4 && xhr.status == 200) { 
-                    var data = JSON.parse(xhr.responseText);
-                    hideSpinners();
-                    document.querySelector("#warning").style.display = "none";
-                    descargarCsv(data.sentimiento);
-                }
-            }
-            console.log("sending", data.length / 1000000, "MB");
-            xhr.send(data);
         }
 
         function borrarFormulario() {
@@ -335,11 +329,13 @@
             
             document.querySelector("#form-analisis p").style.display = "none";
             nTexts = 1;
+
+            var tbody = document.querySelector("#tabla-resultados tbody");
+            tbody.innerHTML = "";
         }
 
         function showSpinners() {
             var spinners = document.querySelectorAll("#form-analisis .lds-facebook");
-            console.log(spinners.length, "spinners");
             for (var i = 0; i < spinners.length; i++) {
                 spinners[i].style.display = "inline-block";
             }
