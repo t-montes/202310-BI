@@ -61,31 +61,33 @@
             height: 60px;
         }
     </style>
-    <h1 class="col-8 title">Análisis de sentimiento</h1>
-    <h3 class="col-8 title">Reseñas de películas</h3>
+    <h1 class="col-12 title">Análisis de sentimiento</h1>
+    <h3 class="col-12 title">Reseñas de películas</h3>
+    <p class="col-12 title"><!-- TODO: Descripción de la app y de cómo utilizarla --></p>
     <br><br>
     <form id="form-analisis">
         {% csrf_token %}
-        <!-- Columns: 1 for each 2 buttons -->
         <div class="row">
             <div class="col-4 d-flex justify-content-center">
-                <input type="button" class="item-pad" value="Descargar CSV" onclick="descargarResultados()">
+                <input type="button" class="item-pad" value="Descargar CSV" onclick="descargarCsv()">
             </div>
             <div class="col-4 d-flex justify-content-center">
                 <input type="button" class="item-pad" value="Borrar" onclick="borrarFormulario()">
             </div>
-            <!-- Vertical line separator and then a 4-col div -->            
             <div class="col-4 d-flex justify-content-center">
                 <input type="button" class="item-pad" value="Importar CSV" onclick="importarCsv()">
             </div>
         </div>
         <div class="row">
             <div class="col-8 d-flex justify-content-center">
-                <label for="textos">Ingrese los textos a analizar:</label>
+                <label for="textos"></label>
             </div>
             <div class="col-4 d-flex justify-content-center">
                 <label for="separador">Separador de columnas:</label>
-                <input type="text" class="item-pad" id="separador" maxlength="1" value="," style="width: 20px;text-align: center;margin-left: 7px;height:25px;">
+                <select id="separador" class="item-pad" style="width: 40px;text-align: center;margin-left: 7px;height:25px;">
+                    <option value=",">,</option>
+                    <option value=";">;</option>
+                </select>
             </div>
         </div>
         <div class="row">
@@ -93,20 +95,30 @@
                 <input type="button" class="item-pad" value="+" style="background-color:chartreuse;" onclick="agregarTexto()">
             </div>
             <div class="col-4 d-flex justify-content-center">
-                <input type="submit" class="item-pad" style="background-color: aqua;" value="Analizar">
+                <input type="submit" class="item-pad" style="background-color: aqua;" value="Analizar" id="analize">
             </div>
             <div class="col-4 d-flex justify-content-center">
                 <label for="separador">Columna de reseñas:</label>
                 <input type="text" class="item-pad" id="columna" value="review_es" style="width: 100px;text-align: center;margin-left: 7px;height:25px;">
             </div>
         </div>
-        <textarea name="textos[]" class="item-pad col-11" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"></textarea>
-        <div class="lds-facebook" style="display:none"><div></div><div></div><div></div></div>
         <div class="row">
-            <div class="col-8 d-flex justify-content-center">
-                <p class="item-pad" style="display:none;color:#F6471C">Máximo pueden haber 5 campos de texto a la vez</p>
+            <div class="col-12 d-flex justify-content-center">
+                <label for="textos" style="margin-top: 10px;margin-bottom: 10px;">Ingrese los textos a analizar:</label>
             </div>
         </div>
+        <div class="row">
+            <div class="col-12 d-flex justify-content-center">
+                <div class="lds-facebook" style="display:none;text-align: center;"><div></div><div></div><div></div></div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12 d-flex justify-content-center">
+                <p class="item-pad" id="warning" style="display:none;color:#F6471C">Se excedió el límite de 500 líneas. Se procesarán y descargarán los resultados en un archivo CSV</p>
+            </div>
+        </div>
+        <textarea name="textos[]" class="item-pad col-12" data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"></textarea>
+        <!--<div class="lds-facebook" style="display:none"><div></div><div></div><div></div></div>-->
         </form>
 
     <table id="tabla-resultados" style="display:none"> <!-- Para el CSV -->
@@ -126,36 +138,44 @@
         function agregarTexto() {
             var textarea = document.createElement("textarea");
             textarea.name = "textos[]";
-            textarea.className = "item-pad col-11";
+            textarea.className = "item-pad col-12";
             textarea.setAttribute("data-gramm", "false");
             textarea.setAttribute("data-gramm_editor", "false");
             textarea.setAttribute("data-enable-grammarly", "false");
             nTexts++;
             
+            /* // Spinner
             var spinner = document.createElement("div");
             spinner.className = "lds-facebook";
             spinner.style.display = "none";
             for (var i = 0; i < 3; i++) {
                 var div = document.createElement("div");
                 spinner.appendChild(div);
-            }
+            }*/
+
             /*if (nTexts > 5) {
                 document.querySelector("#form-analisis p").style.display = "block";
                 return;
             }*/
             document.querySelector("#form-analisis p").style.display = "none";
             document.querySelectorAll("textarea")[nTexts-2].after(textarea);
-            document.querySelectorAll("textarea")[nTexts-2].after(spinner);
+            //document.querySelectorAll("textarea")[nTexts-2].after(spinner);
         }
 
-        function descargarResultados() {
+        function descargarCsv(data) {
             var csv = "texto;sentimiento\n";
-            var rows = document.querySelectorAll("#tabla-resultados tbody tr");
-            for (var i = 0; i < rows.length; i++) {
-                var cells = rows[i].querySelectorAll("td");
-                // cambiar los saltos de línea por espacios y los ; por ,
-                csv += cells[0].textContent.replace(/(\r\n|\n|\r)/gm, " ").replace(/;/g, ",")
-                 + ';' + cells[1].textContent + "\n";
+            if (data) {
+                for (var i = 0; i < data.length; i++) {
+                    csv += data[i].texto.replace(/(\r\n|\n|\r)/gm, " ").replace(/;/g, ",") + ";" + data[i].sentimiento + "\n";
+                }
+            } else {
+                var rows = document.querySelectorAll("#tabla-resultados tbody tr");
+                for (var i = 0; i < rows.length; i++) {
+                    var cells = rows[i].querySelectorAll("td");
+                    // cambiar los saltos de línea por espacios y los ; por ,
+                    csv += cells[0].textContent.replace(/(\r\n|\n|\r)/gm, " ").replace(/;/g, ",")
+                     + ';' + cells[1].textContent + "\n";
+                }
             }
             var blob = new Blob([csv], {type: "text/csv"});
             var url = URL.createObjectURL(blob);
@@ -171,24 +191,36 @@
             var separador = document.querySelector("#separador").value;
             var columna = document.querySelector("#columna").value;
             var input = document.createElement("input");
-            var regex = /("(?:(?:""|[^"])*)"|[^",\s]+)(?=\s*,|\s*$)/g;
+            if (separador == ",") {
+                var regex = /("(?:(?:""|[^"])*)"|[^",\s]+)(?=\s*,|\s*$)/g;
+            } else {
+                var regex = /("(?:(?:""|[^"])*)"|[^";\s]+)(?=\s*;|\s*$)/g;
+            } // TODO: Revisar que el regex funcione también cuando el texto no comienza con comillas; o cambiar eso
 
             input.type = "file";
             input.accept = ".csv";
             input.onchange = function() {
-                borrarFormulario();
                 var file = input.files[0];
                 var reader = new FileReader();
                 reader.onload = function() {
                     var text = reader.result;
                     var lines = text.split("\n");
-                    // strip the line 0 (header)
+
                     var columnas = lines[0].replace(/(\r\n|\n|\r)/gm, "").split(separador);
                     var index = columnas.indexOf(columna);
                     if (index == -1) {
                         alert("No se encontró la columna " + columna);
                         return;
                     }
+
+                    // Si hay más de 500 líneas, procesarlas y descargar el CSV, pero no mostrarlos en los textareas
+                    if (lines.length > 500) {
+                        procesarCsv(lines, regex, index);
+                        return;
+                    }
+
+                    borrarFormulario();
+
                     for (var i = 1; i < lines.length; i++) {
                         var line = lines[i]; // la línea tiene el formato 'columnaX;"reseña";columnaY'
                         var cells = [];
@@ -237,7 +269,57 @@
             // The above code is creating a file input element, clicking it, and then removing it.
             // This is a hack to make the file input element work.
             // The file input element is not visible, so the user doesn't see it.
-            
+        }
+
+        function procesarCsv(lines, regex, index) {
+            showSpinners();
+            document.querySelector("#warning").style.display = "block";
+            var data = {
+                "textos": [],
+                "incluir_textos": true,
+            };
+            for (var i = 1; i < lines.length; i++) {
+                var line = lines[i]; // la línea tiene el formato 'columnaX;"reseña";columnaY'
+                var cells = [];
+                // Utilizar replace() con una función personalizada como callback para separar los valores
+                line.replace(regex, function(match, p1) {
+                    // Si el valor entre comillas dobles contiene comillas dobles, reemplazarlas por comillas simples
+                    var value = p1.replace(/""/g, '"');
+                    // Eliminar las comillas dobles al principio y al final de los valores entre comillas dobles
+                    if (value.charAt(0) === '"' && value.charAt(value.length - 1) === '"') {
+                        value = value.substr(1, value.length - 2);
+                    }
+
+                    // Agregar el valor al array
+                    cells.push(value);
+                });
+
+                if (cells.length < 2) {
+                    continue;
+                } else if (cells.length > 3) {
+                    console.log("La línea " + i + " tiene más de 3 columnas");
+                    console.log(cells);
+                    return;
+                }
+                var text = cells[index];
+                text = text.replace(/(\r\n|\n|\r)/gm, " ");
+                data.textos.push(text);
+            }
+            var data = JSON.stringify(data);
+            var url = window.location.href + 'json/';
+            var xhr = new XMLHttpRequest();
+            xhr.open("POST", url, true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState == 4 && xhr.status == 200) { 
+                    var data = JSON.parse(xhr.responseText);
+                    hideSpinners();
+                    document.querySelector("#warning").style.display = "none";
+                    descargarCsv(data.sentimiento);
+                }
+            }
+            console.log("sending", data.length / 1000000, "MB");
+            xhr.send(data);
         }
 
         function borrarFormulario() {
@@ -255,17 +337,35 @@
             nTexts = 1;
         }
 
+        function showSpinners() {
+            var spinners = document.querySelectorAll("#form-analisis .lds-facebook");
+            console.log(spinners.length, "spinners");
+            for (var i = 0; i < spinners.length; i++) {
+                spinners[i].style.display = "inline-block";
+            }
+        }
+
+        function hideSpinners() {
+            var spinners = document.querySelectorAll("#form-analisis .lds-facebook");
+            for (var i = 0; i < spinners.length; i++) {
+                spinners[i].style.display = "none";
+            }
+        }
+
         $(document).ready(function() {
             $("#form-analisis").submit(function(event) {
                 event.preventDefault();
                 var url = $(this).attr("action");
                 var data = $(this).serialize();
-                
 
                 var textos = document.querySelectorAll("#form-analisis textarea");
-                var spinners = document.querySelectorAll("#form-analisis .lds-facebook");
+                /*var spinners = document.querySelectorAll("#form-analisis .lds-facebook");
                 for (var i = 0; i < textos.length; i++) {
                     spinners[i].style.display = "inline-block";
+                    textos[i].style.backgroundColor = "white";
+                }*/
+                showSpinners();
+                for (var i = 0; i < textos.length; i++) {
                     textos[i].style.backgroundColor = "white";
                 }
 
@@ -308,10 +408,12 @@
                         }
                     }
 
-                    /* Ocultar los spinners */
+                    // Ocultar los spinners
+                    hideSpinners();
+                    /*  
                     for (var i = 0; i < spinners.length; i++) {
                         spinners[i].style.display = "none";
-                    }
+                    }*/
                 });
             });
         });

@@ -73,6 +73,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'prj.wsgi.application'
 
+DATA_UPLOAD_MAX_MEMORY_SIZE = 15 * (1024**2) # 10 MB
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
