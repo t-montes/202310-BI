@@ -20,7 +20,10 @@ def feel_extractor(texts, include_texts=False):
         df = df[['texto']]
     df['sentimiento'] = pipeline.predict(df['texto'])
     df['sentimiento'] = df['sentimiento'].replace({1: 'positivo', 0: 'negativo'})
-    return df.to_dict('records') if include_texts else df['sentimiento'].to_list()
+    #cts = df['sentimiento'].value_counts().to_dict()
+    # find the percentage of each class * 100
+    cts = df['sentimiento'].value_counts(normalize=True).mul(100).round(2).to_dict()
+    return df.to_dict('records') if include_texts else df['sentimiento'].to_list(), cts
     
 
 @csrf_exempt
@@ -29,8 +32,8 @@ def main_endpoint(request):
     if request.method == 'POST':
         texts = request.POST.getlist('textos[]')
         #include_texts = data['incluir_textos'] if 'incluir_textos' in data else False
-        feelings = feel_extractor(texts, False)
-        response_data = {'sentimiento': feelings}
+        feelings, cts = feel_extractor(texts, False)
+        response_data = {'sentimiento': feelings, 'conteo': cts}
         usage_count += 1
         return JsonResponse(response_data)
     elif request.method == 'GET':
@@ -45,8 +48,8 @@ def main_endpoint_json(request):
         data = json.loads(request.body)
         texts = data['textos']
         include_texts = data['incluir_textos'] if 'incluir_textos' in data else False
-        feelings = feel_extractor(texts, include_texts)
-        response_data = {'sentimiento': feelings}
+        feelings, cts = feel_extractor(texts, include_texts)
+        response_data = {'sentimiento': feelings, 'conteo': cts}
         usage_count += 1
         return JsonResponse(response_data)
     else:
@@ -63,14 +66,13 @@ def main_endpoint_csvtext(request):
         include_texts = data['incluir_textos'] if 'incluir_textos' in data else False
 
         df = pd.read_csv(StringIO(texts), sep=sep)
-        print(df)
 
         if col_name not in df.columns:
             return JsonResponse({'error': f'Columna {col_name} no encontrada'})
         df.rename(columns={col_name: 'texto'}, inplace=True)
 
-        feelings = feel_extractor(df, include_texts)
-        response_data = {'sentimiento': feelings}
+        feelings, cts = feel_extractor(df, include_texts)
+        response_data = {'sentimiento': feelings, 'conteo': cts}
         usage_count += 1
         return JsonResponse(response_data)
     else:
