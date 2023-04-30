@@ -17,6 +17,12 @@
             font-size: 19px;
         }
 
+        #final-msg {
+            text-align: center;
+            font-size: 19px;
+            font-weight: bold;
+        }
+
         .brd {
             border: 1px solid #000;
             padding: 10px;
@@ -375,6 +381,15 @@
         }
 
         $(document).ready(function() {
+            // Change final-msg text by the navigator language
+            var lang = navigator.language || navigator.userLanguage;
+            console.log(lang);
+            if (lang.includes("es")) {
+                document.getElementById("final-msg").innerHTML = 'Encuentra el código fuente <a href="https://github.com/t-montes/FilmFeedback" target="_blank">aquí</a>.';
+            } else {
+                document.getElementById("final-msg").innerHTML = 'Find out the source code <a href="https://github.com/t-montes/FilmFeedback" target="_blank">here</a>.';
+            }
+
             // Create chart
             var ctx = document.getElementById('myChart').getContext('2d');
             var myChart = new Chart(ctx, {
@@ -465,5 +480,6 @@
             });
         });
     </script>
+    <p id="final-msg"></p>
 </body>
 </html>
